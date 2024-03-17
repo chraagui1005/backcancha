@@ -17,7 +17,7 @@ return new class extends Migration
             $table->string('metodoPago', 20);
 
             $table->bigInteger('facturaId')->unsigned();
-            $table->foreign('facturaId')->references('facturaId')->on('facturas')->onDelete('cascade')->onUpdate('cascade');
+            $table->foreign('facturaId')->references('facturaId')->on('facturas')->onDelete('restrict')->onUpdate('restrict');
             $table->timestamps();
             $table->softDeletes();
 

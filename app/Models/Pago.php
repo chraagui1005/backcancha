@@ -8,4 +8,11 @@ use Illuminate\Database\Eloquent\Model;
 class Pago extends Model
 {
     use HasFactory;
+    protected $fillable=[
+        'imagenPago',
+        'metodoPago',
+        'facturaId',
+    ];
+    protected $primaryKey = 'id';
+    public $incrementing=true;
 }

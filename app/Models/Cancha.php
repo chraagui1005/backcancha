@@ -8,4 +8,11 @@ use Illuminate\Database\Eloquent\Model;
 class Cancha extends Model
 {
     use HasFactory;
+    protected $fillable=[
+        'canchaNombre',
+        'horario',
+        'precioCancha',
+        'reservaId',
+    ];
+    public $incrementing=true;
 }

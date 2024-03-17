@@ -4,25 +4,25 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Libs\ResultResponse;
-use App\Models\Pago;
-use Illuminate\Http\Request;
+use App\Models\User;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Lang;
 use Illuminate\Support\Facades\Log;
 
-class PagoController extends Controller
+class UserController extends Controller
 {
     /**
      * Display a listing of the resource.
      */
     public function index()
     {
-        $pagos = Pago::all();
+        $users = User::all();
 
         $resultResponse=new ResultResponse();
 
-        $resultResponse->setData($pagos);
+        $resultResponse->setData($users);
         $resultResponse->setStatusCode(ResultResponse::SUCCESS_CODE);
         $resultResponse->setMessage(ResultResponse::TXT_SUCCESS_CODE);
 
@@ -34,21 +34,21 @@ class PagoController extends Controller
      */
     public function store(Request $request)
     {
-        $validator=$this->validatePago($request);
+        $validator=$this->validateuser($request);
 
         $resultResponse = new ResultResponse();
 
         try {
-            $newPago = new Pago([
+            $newUser = new User([
 
-                'imagenPago' => $request->get('imagenPago'),
-                'metodoPago' => $request->get('metodoPago'),
-                'facturaId' => $request->get('facturaId'),
+                'name' => $request->get('name'),
+                'email' => $request->get('email'),
+                'password' => $request->get('password'),
             ]);
 
-            $newPago->save();
+            $newUser->save();
 
-            $resultResponse->setData($newPago);
+            $resultResponse->setData($newUser);
             $resultResponse->setStatusCode(ResultResponse::SUCCESS_CODE);
             $resultResponse->setMessage(ResultResponse::TXT_SUCCESS_CODE);
         } catch(\Exception $e){
@@ -69,22 +69,20 @@ class PagoController extends Controller
         $resultResponse = new ResultResponse();
 
         if (
-            DB::table('pagos')
-                ->where('id', 'like', '%' .$parameter. '%')
-                ->orWhere('imagenPago', 'like', '%' . $parameter . '%')
-                ->orwhere('metodoPago', 'like', '%' .$parameter. '%')
-                ->orwhere('facturaId', 'like', '%' .$parameter. '%')
+            DB::table('users')
+                ->where('name', 'like', '%' .$parameter. '%')
+                ->orWhere('email', 'like', '%' . $parameter . '%')
+                ->orwhere('password', 'like', '%' .$parameter. '%')
                 ->exists()
         ) {
             // Obtenemos el objeto con la consulta
-            $pago = DB::table('pagos')
-                ->where('id', 'like', '%' .$parameter. '%')
-                ->orWhere('imagenPago', 'like', '%' . $parameter . '%')
-                ->orwhere('metodoPago', 'like', '%' .$parameter. '%')
-                ->orwhere('facturaId', 'like', '%' .$parameter. '%')
+            $user = DB::table('users')
+                ->where('name', 'like', '%' .$parameter. '%')
+                ->orWhere('email', 'like', '%' . $parameter . '%')
+                ->orwhere('password', 'like', '%' .$parameter. '%')
                 ->get();
 
-                $resultResponse->setData($pago);
+                $resultResponse->setData($user);
                 $resultResponse->setStatusCode(ResultResponse::SUCCESS_CODE);
                 $resultResponse->setMessage(ResultResponse::TXT_SUCCESS_CODE);
         } else {
@@ -99,22 +97,22 @@ class PagoController extends Controller
     /**
      * Update the specified resource in storage.
      */
-    public function update(Request $request, $id)
+    public function update(Request $request, $email)
     {
-        $validator=$this->validatePago($request);
+        $validator=$this->validateUser($request);
         $resultResponse = new ResultResponse();
 
         try{
-            $pago=Pago::findOrFail($id);
+            $user = User::where('email', 'like', $email)->firstOrFail();
             try {
 
-                $pago->imagenPago = $request->get('imagenPago');
-                $pago->metodoPago = $request->get('metodoPago');
-                $pago->facturaId = $request->get('facturaId');
+                $user->name = $request->get('name');
+                $user->email = $request->get('email');
+                $user->password = $request->get('password');
 
-                $pago->save();
+                $user->save();
 
-                $resultResponse->setData($pago);
+                $resultResponse->setData($user);
                 $resultResponse->setStatusCode(ResultResponse::SUCCESS_CODE);
                 $resultResponse->setMessage(ResultResponse::TXT_SUCCESS_CODE);
             } catch(\Exception $e){
@@ -134,28 +132,28 @@ class PagoController extends Controller
         return response()->json($resultResponse);
     }
 
-    public function put(Request $request, $id)
+
+    public function put(Request $request, $email)
     {
-        $this->validatePago($request);
+        $this->validateUser($request);
         $resultResponse = new ResultResponse();
 
         try {
-            $pago = Pago::findOrFail($id);
+            $user = User::where('email', 'like', $email)->firstOrFail();
 
             try{
-                $pago->id=$request->get('id', $pago->id);
-                $pago->imagenPago=$request->get('imagenPago', $pago->imagenPago);
-                $pago->metodoPago=$request->get('metodoPago', $pago->metodoPago);
-                $pago->facturaId=$request->get('facturaId', $pago->facturaId);
+                $user->name=$request->get('name', $user->name);
+                $user->email=$request->get('email', $user->email);
+                $user->password=$request->get('password', $user->password);
 
-                $pago->save();
+                $user->save();
 
-                $resultResponse->setData($pago);
+                $resultResponse->setData($user);
                 $resultResponse->setStatusCode(ResultResponse::SUCCESS_CODE);
                 $resultResponse->setMessage(ResultResponse::TXT_SUCCESS_CODE);
             } catch(\Exception $e){
                 Log::debug($e);
-                $resultResponse->setData("Si modifica el id debe ser unico en la tabla pagos. Si modifica el facturaId debe ser númerico y único en la tabla FACTURAS.");
+                $resultResponse->setData("Si modifica el name debe ser string, max:30. Si modifica el email debe contener @gmail.com al final.");
                 $resultResponse->setStatusCode(ResultResponse::ERROR_CODE);
                 $resultResponse->setMessage(ResultResponse::TXT_ERROR_CODE);
             }
@@ -169,46 +167,54 @@ class PagoController extends Controller
 
         return response()->json($resultResponse);
 
+
     }
 
     /**
      * Remove the specified resource from storage.
      */
-    public function destroy($id)
-    {
-        $resultResponse=new ResultResponse();
+    public function destroy($email)
+{
+    $resultResponse=new ResultResponse();
         try{
-            $pago=Pago::findOrFail($id);
-            $pago->delete();
+            $user = User::where('email', 'like', $email)->firstOrFail();
+            try{
 
-            $resultResponse->setData($pago);
-            $resultResponse->setStatusCode(ResultResponse::SUCCESS_CODE);
-            $resultResponse->setMessage(ResultResponse::TXT_SUCCESS_CODE);
-        } catch(\Exception $e){
+                $user->delete();
+
+                $resultResponse->setData($user);
+                $resultResponse->setStatusCode(ResultResponse::SUCCESS_CODE);
+                $resultResponse->setMessage(ResultResponse::TXT_SUCCESS_CODE);
+            } catch(\Exception $e){
+                Log::debug($e);
+                $resultResponse->setData("No es posible eliminar al user porque tiene al menos una reserva.");
+                $resultResponse->setStatusCode(ResultResponse::ERROR_CODE);
+                $resultResponse->setMessage(ResultResponse::TXT_ERROR_CODE);
+            }
+
+        }catch(\Exception $e){
             $resultResponse->setData("No existen coincidencias con la búsqueda");
             $resultResponse->setStatusCode(ResultResponse::ERROR_ELEMENT_NOT_FOUND_CODE);
             $resultResponse->setMessage(ResultResponse::TXT_ERROR_ELEMENT_NOT_FOUND_CODE);
         }
 
         return response()->json($resultResponse);
-    }
+}
 
-    private function validatePago($request){
+
+
+    private function validateUser($request){
         $rules=[];
         $messages=[];
 
-        $rules['id']='unique:pagos';
-        $messages['id.unique:pagos']=Lang::get('alerts.pago_id_unique:pagos');
+        $rules['email']='unique:users|required|max:40';
+        $messages['email.unique:users']=Lang::get('alerts.user_email_unique:users');
+        $messages['email.required']=Lang::get('alerts.user_email_required');
+        $messages['email.max:40']=Lang::get('alerts.user_email_max:40');
 
-        $rules['facturaId']='exists:facturas|numeric';
-        $messages['facturaId.exists:facturas']=Lang::get('alerts.pago_facturaId_exists:facturas');
-        $messages['facturaId.numeric']=Lang::get('alerts.pago_facturaId_numeric');
-
-        $rules['imagenPago']='required';
-        $messages['imagenPago.required']=Lang::get('alerts.pago_imagenPago_required');
-
-        $rules['metodoPago']='required';
-        $messages['metodoPago.required']=Lang::get('alerts.pago_metodoPago_required');
+        $rules['name']='required|max:40';
+        $messages['name.required']=Lang::get('alerts.user_name_required');
+        $messages['name.max:40']=Lang::get('alerts.user_name_max:40');
 
         return Validator::make($request->all(), $rules, $messages);
     }

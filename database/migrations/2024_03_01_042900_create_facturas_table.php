@@ -19,7 +19,7 @@ return new class extends Migration
             $table->string('direccionFact', 50);
             $table->integer('celularFact')->lenght(10)->nullable();
 
-            $table->bigInteger('reservaId')->unsigned();
+            $table->bigInteger('reservaId')->unsigned()->unique();
             $table->foreign('reservaId')->references('reservaId')->on('reservas')->onDelete('cascade')->onUpdate('cascade');
             $table->timestamps();
             $table->softDeletes();

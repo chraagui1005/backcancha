@@ -8,4 +8,15 @@ use Illuminate\Database\Eloquent\Model;
 class Factura extends Model
 {
     use HasFactory;
+    protected $fillable=[
+        'facturaId',
+        'cedulaFact',
+        'nombreFact',
+        'apellidoFact',
+        'direccionFact',
+        'celularFact',
+        'reservaId',
+    ];
+    protected $primaryKey = 'facturaId';
+    public $incrementing=true;
 }

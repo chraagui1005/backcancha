@@ -17,7 +17,7 @@ return new class extends Migration
             $table->decimal('precioBebida', 4, 2);
             $table->integer('stockBebida')->lenght(6);
 
-            $table->bigInteger('reservaId')->unsigned();
+            $table->bigInteger('reservaId')->unsigned()->nullable();
             $table->foreign('reservaId')->references('reservaId')->on('reservas')->onDelete('cascade')->onUpdate('cascade');
             $table->timestamps();
             $table->softDeletes();

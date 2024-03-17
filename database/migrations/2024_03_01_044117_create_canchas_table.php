@@ -12,15 +12,18 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('canchas', function (Blueprint $table) {
-            $table->bigIncrements('canchaId');
+            $table->id();
+            $table->string('canchaNombre',20);
             $table->dateTime('horario');
             $table->decimal('precioCancha', 6, 2);
-            $table->decimal('tiempoCancha', 4, 2);
 
-            $table->bigInteger('reservaId')->unsigned();
+            $table->bigInteger('reservaId')->unsigned()->nullable();
             $table->foreign('reservaId')->references('reservaId')->on('reservas')->onDelete('cascade')->onUpdate('cascade');
             $table->timestamps();
             $table->softDeletes();
+
+            $table->unique(['canchaNombre', 'horario']);
+
         });
     }
 
