@@ -42,8 +42,10 @@ class UserController extends Controller
             $newUser = new User([
 
                 'name' => $request->get('name'),
+                'apellido' => $request->get('apellido'),
                 'email' => $request->get('email'),
                 'password' => $request->get('password'),
+                'cellphone' => $request->get('cellphone'),
             ]);
 
             $newUser->save();
@@ -71,15 +73,19 @@ class UserController extends Controller
         if (
             DB::table('users')
                 ->where('name', 'like', '%' .$parameter. '%')
+                ->orWhere('apellido', 'like', '%' . $parameter . '%')
                 ->orWhere('email', 'like', '%' . $parameter . '%')
                 ->orwhere('password', 'like', '%' .$parameter. '%')
+                ->orWhere('cellphone', 'like', '%' . $parameter . '%')
                 ->exists()
         ) {
             // Obtenemos el objeto con la consulta
             $user = DB::table('users')
                 ->where('name', 'like', '%' .$parameter. '%')
+                ->orWhere('apellido', 'like', '%' . $parameter . '%')
                 ->orWhere('email', 'like', '%' . $parameter . '%')
                 ->orwhere('password', 'like', '%' .$parameter. '%')
+                ->orWhere('cellphone', 'like', '%' . $parameter . '%')
                 ->get();
 
                 $resultResponse->setData($user);
@@ -107,8 +113,10 @@ class UserController extends Controller
             try {
 
                 $user->name = $request->get('name');
+                $user->apellido = $request->get('apellido');
                 $user->email = $request->get('email');
                 $user->password = $request->get('password');
+                $user->cellphone = $request->get('cellphone');
 
                 $user->save();
 
@@ -143,8 +151,10 @@ class UserController extends Controller
 
             try{
                 $user->name=$request->get('name', $user->name);
+                $user->apellido=$request->get('apellido', $user->apellido);
                 $user->email=$request->get('email', $user->email);
                 $user->password=$request->get('password', $user->password);
+                $user->cellphone=$request->get('cellphone', $user->cellphone);
 
                 $user->save();
 
@@ -212,9 +222,21 @@ class UserController extends Controller
         $messages['email.required']=Lang::get('alerts.user_email_required');
         $messages['email.max:40']=Lang::get('alerts.user_email_max:40');
 
-        $rules['name']='required|max:40';
+        $rules['name']='required|max:30';
         $messages['name.required']=Lang::get('alerts.user_name_required');
         $messages['name.max:40']=Lang::get('alerts.user_name_max:40');
+
+        $rules['apellido']='required|max:30';
+        $messages['apellido.required']=Lang::get('alerts.user_apellido_required');
+        $messages['apellido.max:30']=Lang::get('alerts.user_apellido_max:30');
+
+        $rules['password']='required|min:8';
+        $messages['password.required']=Lang::get('alerts.user_password_required');
+        $messages['password.min:8']=Lang::get('alerts.user_password_min:8');
+
+        $rules['cellphone']='numeric|max:30';
+        $messages['cellphone.numeric']=Lang::get('alerts.user_cellphone_numeric');
+        $messages['cellphone.max:10']=Lang::get('alerts.user_cellphone_max:10');
 
         return Validator::make($request->all(), $rules, $messages);
     }
