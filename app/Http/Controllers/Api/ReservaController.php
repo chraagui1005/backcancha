@@ -216,86 +216,130 @@ private function actualizarStockBebidas($bebidaId, $cantidadBebidas, $revertir =
      * Update the specified resource in storage.
      */
     public function update(Request $request, $reservaId)
-    {
-        $validator=$this->validateReserva($request);
-        $resultResponse = new ResultResponse();
+{
+    $validator = $this->validateReserva($request);
+    $resultResponse = new ResultResponse();
 
-        try{
-            $reserva=Reserva::findOrFail($reservaId);
-            try {
-
-                $reserva->horarioInicio = $request->get('horarioInicio');
-                $reserva->horarioFin = $request->get('horarioFin');
-                $reserva->canchaNombre = $request->get('canchaNombre');
-                $reserva->bebidaId = $request->get('bebidaId');
-                $reserva->cantidadBebidas = $request->get('cantidadBebidas');
-                $reserva->precioTotal = $request->get('precioTotal');
-
-                $reserva->email = $request->get('email');
-
-                $reserva->save();
-
-                $resultResponse->setData($reserva);
-                $resultResponse->setStatusCode(ResultResponse::SUCCESS_CODE);
-                $resultResponse->setMessage(ResultResponse::TXT_SUCCESS_CODE);
-            } catch(\Exception $e){
-                Log::debug($e);
-                $resultResponse->setData($validator->messages());
-                $resultResponse->setStatusCode(ResultResponse::ERROR_CODE);
-                $resultResponse->setMessage(ResultResponse::TXT_ERROR_CODE);
-            }
-
-        } catch(\Exception $e){
-            $resultResponse->setData("No existen coincidencias con la búsqueda");
-            $resultResponse->setStatusCode(ResultResponse::ERROR_ELEMENT_NOT_FOUND_CODE);
-            $resultResponse->setMessage(ResultResponse::TXT_ERROR_ELEMENT_NOT_FOUND_CODE);
-
-        }
-
-        return response()->json($resultResponse);
-    }
-
-    public function put(Request $request, $id)
-    {
-        $this->validateReserva($request);
-        $resultResponse = new ResultResponse();
+    try {
+        // Obtener la información de la reserva antes de la actualización
+        $reserva = Reserva::findOrFail($reservaId);
+        $bebidaIdAnterior = $reserva->bebidaId;
+        $cantidadBebidasAnterior = $reserva->cantidadBebidas;
+        $canchaNombreAnterior = $reserva->canchaNombre;
+        $horarioInicioAnterior = $reserva->horarioInicio;
+        $horarioFinAnterior = $reserva->horarioFin;
 
         try {
-            $reserva = Reserva::findOrFail($id);
+            // Actualizar la reserva
+            $reserva->horarioInicio = $request->get('horarioInicio');
+            $reserva->horarioFin = $request->get('horarioFin');
+            $reserva->canchaNombre = $request->get('canchaNombre');
+            $reserva->bebidaId = $request->get('bebidaId');
+            $reserva->cantidadBebidas = $request->get('cantidadBebidas');
+            $reserva->precioTotal = $request->get('precioTotal');
+            $reserva->email = $request->get('email');
+            $reserva->save();
 
-            try{
-                $reserva->horarioInicio=$request->get('horarioInicio', $reserva->horarioInicio);
-                $reserva->horarioFin=$request->get('horarioFin', $reserva->horarioFin);
-                $reserva->canchaNombre=$request->get('canchaNombre', $reserva->canchaNombre);
-                $reserva->bebidaId=$request->get('bebidaId', $reserva->bebidaId);
-                $reserva->cantidadBebidas=$request->get('cantidadBebidas', $reserva->cantidadBebidas);
-                $reserva->precioTotal=$request->get('precioTotal', $reserva->precioTotal);
+            // Revertir el stock de la bebida anterior
+            $this->actualizarStockBebidas($bebidaIdAnterior, $cantidadBebidasAnterior, true); // true para revertir la actualización
 
-                $reserva->email=$request->get('email', $reserva->email);
+            // Actualizar el stock de la nueva bebida
+            $this->actualizarStockBebidas($request->get('bebidaId'), $request->get('cantidadBebidas'));
 
-                $reserva->save();
+            // Revertir el estado de la cancha anterior
+            $this->actualizarEstado($canchaNombreAnterior, $horarioInicioAnterior, $horarioFinAnterior, true); // true para revertir la actualización
 
-                $resultResponse->setData($reserva);
-                $resultResponse->setStatusCode(ResultResponse::SUCCESS_CODE);
-                $resultResponse->setMessage(ResultResponse::TXT_SUCCESS_CODE);
-            } catch(\Exception $e){
-                Log::debug($e);
-                $resultResponse->setData("Si modifica el reservaId debe ser númerico, max:10 y único. Si modifica el email deber estar creado en la tabla users.");
-                $resultResponse->setStatusCode(ResultResponse::ERROR_CODE);
-                $resultResponse->setMessage(ResultResponse::TXT_ERROR_CODE);
+            // Actualizar el estado de la nueva cancha
+            $this->actualizarEstado($request->get('canchaNombre'), $request->get('horarioInicio'), $request->get('horarioFin'));
+
+            $resultResponse->setData($reserva);
+            $resultResponse->setStatusCode(ResultResponse::SUCCESS_CODE);
+            $resultResponse->setMessage(ResultResponse::TXT_SUCCESS_CODE);
+        } catch (\Exception $e) {
+            Log::debug($e);
+            $resultResponse->setData($validator->messages());
+            $resultResponse->setStatusCode(ResultResponse::ERROR_CODE);
+            $resultResponse->setMessage(ResultResponse::TXT_ERROR_CODE);
+        }
+    } catch (\Exception $e) {
+        $resultResponse->setData("No existen coincidencias con la búsqueda");
+        $resultResponse->setStatusCode(ResultResponse::ERROR_ELEMENT_NOT_FOUND_CODE);
+        $resultResponse->setMessage(ResultResponse::TXT_ERROR_ELEMENT_NOT_FOUND_CODE);
+    }
+
+    return response()->json($resultResponse);
+}
+
+
+
+public function put(Request $request, $id)
+{
+    $validator = $this->validateReserva($request);
+    $resultResponse = new ResultResponse();
+
+    try {
+        $reserva = Reserva::findOrFail($id);
+
+        // Almacenar los valores anteriores de la reserva
+        $horarioInicioAnterior = $reserva->horarioInicio;
+        $horarioFinAnterior = $reserva->horarioFin;
+        $canchaNombreAnterior = $reserva->canchaNombre;
+        $bebidaIdAnterior = $reserva->bebidaId;
+        $cantidadBebidasAnterior = $reserva->cantidadBebidas;
+
+        try {
+            // Verificar si el nuevo ID de bebida existe en la tabla bebidas
+            $nuevoBebidaId = $request->get('bebidaId', $reserva->bebidaId);
+            $bebidaExistente = Bebida::where('bebidaId', $nuevoBebidaId)->exists();
+
+            if (!$bebidaExistente) {
+                throw new \Exception("El ID de la bebida proporcionado no existe en la tabla bebidas.");
             }
 
-        } catch(\Exception $e){
-            $resultResponse->setData("No existen coincidencias con la búsqueda");
-            $resultResponse->setStatusCode(ResultResponse::ERROR_ELEMENT_NOT_FOUND_CODE);
-            $resultResponse->setMessage(ResultResponse::TXT_ERROR_ELEMENT_NOT_FOUND_CODE);
+            // Actualizar la reserva
+            $reserva->horarioInicio = $request->get('horarioInicio', $reserva->horarioInicio);
+            $reserva->horarioFin = $request->get('horarioFin', $reserva->horarioFin);
+            $reserva->canchaNombre = $request->get('canchaNombre', $reserva->canchaNombre);
+            $reserva->bebidaId = $nuevoBebidaId;
+            $reserva->cantidadBebidas = $request->get('cantidadBebidas', $reserva->cantidadBebidas);
+            $reserva->precioTotal = $request->get('precioTotal', $reserva->precioTotal);
+            $reserva->email = $request->get('email', $reserva->email);
+            $reserva->save();
 
+            // Revertir el stock de la bebida anterior
+            if ($bebidaIdAnterior !== $reserva->bebidaId || $cantidadBebidasAnterior !== $reserva->cantidadBebidas) {
+                $this->actualizarStockBebidas($bebidaIdAnterior, $cantidadBebidasAnterior, true); // true para revertir la actualización
+            }
+
+            // Actualizar el stock de la nueva bebida
+            $this->actualizarStockBebidas($reserva->bebidaId, $reserva->cantidadBebidas);
+
+            // Revertir el estado de la cancha anterior
+            $this->actualizarEstado($canchaNombreAnterior, $horarioInicioAnterior, $horarioFinAnterior, true); // true para revertir la actualización
+
+            // Actualizar el estado de la nueva cancha
+            $this->actualizarEstado($reserva->canchaNombre, $reserva->horarioInicio, $reserva->horarioFin);
+
+            $resultResponse->setData($reserva);
+            $resultResponse->setStatusCode(ResultResponse::SUCCESS_CODE);
+            $resultResponse->setMessage(ResultResponse::TXT_SUCCESS_CODE);
+        } catch (\Exception $e) {
+            Log::debug($e);
+            $resultResponse->setData("Si modifica el reservaId debe ser númerico, max:10 y único. Si modifica el email debe estar creado en la tabla users.");
+            $resultResponse->setStatusCode(ResultResponse::ERROR_CODE);
+            $resultResponse->setMessage(ResultResponse::TXT_ERROR_CODE);
         }
-
-        return response()->json($resultResponse);
-
-
+    } catch (\Exception $e) {
+        $resultResponse->setData("No existen coincidencias con la búsqueda");
+        $resultResponse->setStatusCode(ResultResponse::ERROR_ELEMENT_NOT_FOUND_CODE);
+        $resultResponse->setMessage(ResultResponse::TXT_ERROR_ELEMENT_NOT_FOUND_CODE);
     }
+
+    return response()->json($resultResponse);
+}
+
+
+
 
     /**
      * Remove the specified resource from storage.
@@ -342,10 +386,10 @@ private function actualizarStockBebidas($bebidaId, $cantidadBebidas, $revertir =
         $messages['reservaId.numeric']=Lang::get('alerts.reserva_reservaId_numeric');
         $messages['reservaId.max:10']=Lang::get('alerts.reserva_reservaId_max:10');
 
-        $rules['canchaNombre'] = 'required|max:20';
+        $rules['canchaNombre'] = 'required|max:20|exists:canchas,canchaNombre';
         $messages['canchaNombre.required'] = Lang::get('alerts.reserva_canchaNombre_required');
         $messages['canchaNombre.max'] = Lang::get('alerts.reserva_canchaNombre_max:20');
-        $messages['canchaNombre.exists:canchas']=Lang::get('alerts.reserva_canchaNombre_exists:canchas');
+        $messages['canchaNombre.exists:canchas'] = Lang::get('alerts.reserva_canchaNombre_exists:canchas');
 
 
         $rules['horarioInicio'] = 'required|date_format:Y-m-d H:i:s';
@@ -358,10 +402,10 @@ private function actualizarStockBebidas($bebidaId, $cantidadBebidas, $revertir =
         $messages['horarioFin.date_format'] = Lang::get('alerts.reserva_horarioFin_date_format:Y-m-d H:i:s');
 
 
-        $rules['bebidaId']='required|max:10';
+        $rules['bebidaId']='required|max:10|exists:bebidas,bebidaId';
         $messages['bebidaId.required']=Lang::get('alerts.reserva_bebidaId_required');
         $messages['bebidaId.max:10']=Lang::get('alerts.reserva_bebidaId_max:10');
-        $messages['bebidaId.exists:bebidas']=Lang::get('alerts.reserva_bebidaId_exists:bebidas');
+        $messages['bebidaId.exists:bebidas'] = Lang::get('alerts.reserva_bebidaId_exists:bebidas');
 
 
         $rules['cantidadBebidas']='required|integer';
