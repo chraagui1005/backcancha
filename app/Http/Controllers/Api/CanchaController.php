@@ -43,9 +43,11 @@ class CanchaController extends Controller
             $newCancha = new Cancha([
 
                 'canchaNombre' => $request->get('canchaNombre'),
-                'horario' => $request->get('horario'),
+                'horarioInicio' => $request->get('horarioInicio'),
+                'horarioFin' => $request->get('horarioFin'),
+
                 'precioCancha' => $request->get('precioCancha'),
-                'reservaId' => $request->get('reservaId'),
+                'estado' => $request->get('estado'),
             ]);
 
             $newCancha->save();
@@ -73,17 +75,21 @@ class CanchaController extends Controller
         if (
             DB::table('canchas')
                 ->where('canchaNombre', 'like', '%' .$parameter. '%')
-                ->orWhere('horario', 'like', '%' . $parameter . '%')
+                ->orWhere('horarioInicio', 'like', '%' . $parameter . '%')
+                ->orWhere('horarioFin', 'like', '%' . $parameter . '%')
+
                 ->orwhere('precioCancha', 'like', '%' .$parameter. '%')
-                ->orwhere('reservaId', 'like', '%' .$parameter. '%')
+                ->orwhere('estado', 'like', '%' .$parameter. '%')
                 ->exists()
         ) {
             // Obtenemos el objeto con la consulta
             $cancha = DB::table('canchas')
                 ->where('canchaNombre', 'like', '%' .$parameter. '%')
-                ->orWhere('horario', 'like', '%' . $parameter . '%')
+                ->orWhere('horarioInicio', 'like', '%' . $parameter . '%')
+                ->orWhere('horarioFin', 'like', '%' . $parameter . '%')
+
                 ->orwhere('precioCancha', 'like', '%' .$parameter. '%')
-                ->orwhere('reservaId', 'like', '%' .$parameter. '%')
+                ->orwhere('estado', 'like', '%' .$parameter. '%')
                 ->get();
 
                 $resultResponse->setData($cancha);
@@ -111,9 +117,11 @@ class CanchaController extends Controller
             try {
 
                 $cancha->canchaNombre = $request->get('canchaNombre');
-                $cancha->horario = $request->get('horario');
+                $cancha->horarioInicio = $request->get('horarioInicio');
+                $cancha->horarioFin = $request->get('horarioFin');
+
                 $cancha->precioCancha = $request->get('precioCancha');
-                $cancha->reservaId = $request->get('reservaId');
+                $cancha->estado = $request->get('estado');
 
                 $cancha->save();
 
@@ -147,9 +155,11 @@ class CanchaController extends Controller
 
             try{
                 $cancha->canchaNombre=$request->get('canchaNombre', $cancha->canchaNombre);
-                $cancha->horario=$request->get('horario', $cancha->horario);
+                $cancha->horarioInicio=$request->get('horarioInicio', $cancha->horarioInicio);
+                $cancha->horarioFin=$request->get('horarioFin', $cancha->horarioFin);
+
                 $cancha->precioCancha=$request->get('precioCancha', $cancha->precioCancha);
-                $cancha->reservaId=$request->get('reservaId', $cancha->reservaId);
+                $cancha->estado=$request->get('estado', $cancha->estado);
 
                 $cancha->save();
 
@@ -204,19 +214,23 @@ class CanchaController extends Controller
         $messages['canchaNombre.required'] = Lang::get('alerts.cancha_canchaNombre_required');
         $messages['canchaNombre.max'] = Lang::get('alerts.cancha_canchaNombre_max:20');
 
-        $rules['reservaId'] = 'exists:reservas|numeric|max:10';
-        $messages['reservaId.exists'] = Lang::get('alerts.cancha_reservaId_exists:reservas');
-        $messages['reservaId.numeric'] = Lang::get('alerts.cancha_reservaId_numeric');
-        $messages['reservaId.max'] = Lang::get('alerts.cancha_reservaId_max:10');
+        $rules['horarioInicio'] = 'required|date_format:Y-m-d H:i:s|unique:canchas,horarioInicio,canchaNombre';
+        $messages['horarioInicio.required'] = Lang::get('alerts.cancha_horarioInicio_required');
+        $messages['horarioInicio.date_format'] = Lang::get('alerts.cancha_horarioInicio_date_format:Y-m-d H:i:s');
+        $messages['horarioInicio.unique'] = 'The combination of canchaNombre and horarioInicio already exists.';
 
-        $rules['horario'] = 'required|date_format:Y-m-d H:i:s|unique:canchas,horario,canchaNombre';
-        $messages['horario.required'] = Lang::get('alerts.cancha_horario_required');
-        $messages['horario.date_format'] = Lang::get('alerts.cancha_horario_date_format:Y-m-d H:i:s');
-        $messages['horario.unique'] = 'The combination of canchaNombre and horario already exists.';
+        $rules['horarioFin'] = 'required|date_format:Y-m-d H:i:s|unique:canchas,horarioFin,canchaNombre';
+        $messages['horarioFin.required'] = Lang::get('alerts.cancha_horarioFin_required');
+        $messages['horarioFin.date_format'] = Lang::get('alerts.cancha_horarioFin_date_format:Y-m-d H:i:s');
+        $messages['horarioFin.unique'] = 'The combination of canchaNombre and horarioFin already exists.';
 
         $rules['precioCancha'] = 'required|regex:/^\d{1,6}(\.\d{1,2})?$/';
         $messages['precioCancha.required'] = Lang::get('alerts.cancha_precioCancha_required');
         $messages['precioCancha.regex'] = Lang::get('alerts.cancha_precioCancha_regex');
+
+        $rules['estado'] = 'required|max:20';
+        $messages['estado.required'] = Lang::get('alerts.cancha_estado_required');
+        $messages['estado.max'] = Lang::get('alerts.cancha_estado_max:20');
 
         return Validator::make($request->all(), $rules, $messages);
     }

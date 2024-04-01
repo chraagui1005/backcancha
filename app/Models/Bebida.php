@@ -14,7 +14,6 @@ class Bebida extends Model
         'bebidaId',
         'precioBebida',
         'stockBebida',
-        'reservaId',
     ];
     protected $primaryKey = 'bebidaId';
     public $incrementing=false;

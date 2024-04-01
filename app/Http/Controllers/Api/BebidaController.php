@@ -44,7 +44,6 @@ class BebidaController extends Controller
                 'bebidaId' => $request->get('bebidaId'),
                 'precioBebida' => $request->get('precioBebida'),
                 'stockBebida' => $request->get('stockBebida'),
-                'reservaId' => $request->get('reservaId'),
             ]);
 
             $newBebida->save();
@@ -74,7 +73,6 @@ class BebidaController extends Controller
                 ->where('bebidaId', 'like', '%' .$parameter. '%')
                 ->orWhere('precioBebida', 'like', '%' . $parameter . '%')
                 ->orwhere('stockBebida', 'like', '%' .$parameter. '%')
-                ->orwhere('reservaId', 'like', '%' .$parameter. '%')
                 ->exists()
         ) {
             // Obtenemos el objeto con la consulta
@@ -82,7 +80,6 @@ class BebidaController extends Controller
                 ->where('bebidaId', 'like', '%' .$parameter. '%')
                 ->orWhere('precioBebida', 'like', '%' . $parameter . '%')
                 ->orwhere('stockBebida', 'like', '%' .$parameter. '%')
-                ->orwhere('reservaId', 'like', '%' .$parameter. '%')
                 ->get();
 
                 $resultResponse->setData($bebida);
@@ -112,7 +109,6 @@ class BebidaController extends Controller
                 $bebida->bebidaId = $request->get('bebidaId');
                 $bebida->precioBebida = $request->get('precioBebida');
                 $bebida->stockBebida = $request->get('stockBebida');
-                $bebida->reservaId = $request->get('reservaId');
 
                 $bebida->save();
 
@@ -148,7 +144,6 @@ class BebidaController extends Controller
                 $bebida->bebidaId=$request->get('bebidaId', $bebida->bebidaId);
                 $bebida->precioBebida=$request->get('precioBebida', $bebida->precioBebida);
                 $bebida->stockBebida=$request->get('stockBebida', $bebida->stockBebida);
-                $bebida->reservaId=$request->get('reservaId', $bebida->reservaId);
 
                 $bebida->save();
 
@@ -157,7 +152,7 @@ class BebidaController extends Controller
                 $resultResponse->setMessage(ResultResponse::TXT_SUCCESS_CODE);
             } catch(\Exception $e){
                 Log::debug($e);
-                $resultResponse->setData("Si modifica el bebidaId debe ser unico en la tabla bebidas. Si modifica el reservaId debe ser númerico, max:10 y único en la tabla reservas. Si modifica el precio debe ser decimal. Si modifica el stock debe ser numerico.");
+                $resultResponse->setData("Si modifica el bebidaId debe ser unico en la tabla bebidas. Si modifica el precio debe ser decimal, max:6 tabla reservas. Si modifica el stock debe ser numerico.");
                 $resultResponse->setStatusCode(ResultResponse::ERROR_CODE);
                 $resultResponse->setMessage(ResultResponse::TXT_ERROR_CODE);
             }
@@ -204,10 +199,6 @@ class BebidaController extends Controller
         $messages['bebidaId.required']=Lang::get('alerts.bebida_bebidaId_required');
         $messages['bebidaId.max:10']=Lang::get('alerts.bebida_bebidaId_max:10');
 
-        $rules['reservaId']='exists:reservas|numeric|max:10';
-        $messages['reservaId.exists:reservas']=Lang::get('alerts.bebida_reservaId_exists:reservas');
-        $messages['reservaId.numeric']=Lang::get('alerts.bebida_reservaId_numeric');
-        $messages['reservaId.max:10']=Lang::get('alerts.bebida_reservaId_max:10');
 
         $rules['precioBebida']='required|regex:/^\d{1,6}(\.\d{1,2})?$/';
         $messages['precioBebida.required']=Lang::get('alerts.bebida_precioBebida_required');

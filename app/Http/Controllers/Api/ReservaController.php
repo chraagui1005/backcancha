@@ -4,6 +4,8 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Libs\ResultResponse;
+use App\Models\Bebida;
+use App\Models\Cancha;
 use App\Models\Reserva;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Http\Request;
@@ -29,36 +31,142 @@ class ReservaController extends Controller
         return response()->json($resultResponse);
     }
 
-    /**
-     * Store a newly created resource in storage.
-     */
+
     public function store(Request $request)
-    {
-        $validator=$this->validateReserva($request);
+{
+    $validator = $this->validateReserva($request);
 
-        $resultResponse = new ResultResponse();
+    $resultResponse = new ResultResponse();
 
-        try {
-            $newReserva = new Reserva([
+    try {
+        // Verificar si la cancha está disponible
+        $canchaNombre = $request->get('canchaNombre');
+        $horarioInicio = $request->get('horarioInicio');
+        $horarioFin = $request->get('horarioFin');
 
-                'descripcion' => $request->get('descripcion'),
-                'email' => $request->get('email'),
-            ]);
+        $cancha = Cancha::where('canchaNombre', $canchaNombre)
+                        ->where('horarioInicio', $horarioInicio)
+                        ->where('horarioFin', $horarioFin)
+                        ->where('estado', 'Disponible')
+                        ->first();
 
-            $newReserva->save();
+        if ($cancha) {
+            // Obtener la cantidad solicitada de bebidas
+            $cantidadBebidas = $request->get('cantidadBebidas');
 
-            $resultResponse->setData($newReserva);
-            $resultResponse->setStatusCode(ResultResponse::SUCCESS_CODE);
-            $resultResponse->setMessage(ResultResponse::TXT_SUCCESS_CODE);
-        } catch(\Exception $e){
-            Log::debug($e);
-            $resultResponse->setData($validator->messages());
+            // Obtener el ID de la bebida
+            $bebidaId = $request->get('bebidaId');
+
+            // Obtener la bebida
+            $bebida = Bebida::find($bebidaId);
+
+            // Verificar si la bebida existe y si la cantidad solicitada no excede el stock
+            if ($bebida && $cantidadBebidas <= $bebida->stockBebida) {
+                // Actualizar el stock de las bebidas
+                $this->actualizarStockBebidas(
+                    $bebidaId,
+                    $cantidadBebidas
+                );
+
+                // Crear la reserva
+                $newReserva = new Reserva([
+                    'horarioInicio' => $horarioInicio,
+                    'horarioFin' => $horarioFin,
+                    'canchaNombre' => $canchaNombre,
+                    'bebidaId' => $bebidaId,
+                    'cantidadBebidas' => $cantidadBebidas,
+                    'precioTotal' => $request->get('precioTotal'),
+                    'email' => $request->get('email'),
+                ]);
+
+                $newReserva->save();
+
+                // Actualizar el estado de la cancha
+                $this->actualizarEstado(
+                    $canchaNombre,
+                    $horarioInicio,
+                    $horarioFin
+                );
+
+                $resultResponse->setData($newReserva);
+                $resultResponse->setStatusCode(ResultResponse::SUCCESS_CODE);
+                $resultResponse->setMessage(ResultResponse::TXT_SUCCESS_CODE);
+            } else {
+                // Manejar el caso donde la cantidad solicitada excede el stock
+                $resultResponse->setData("La cantidad solicitada excede el stock disponible.");
+                $resultResponse->setStatusCode(ResultResponse::ERROR_CODE);
+                $resultResponse->setMessage(ResultResponse::TXT_ERROR_CODE);
+            }
+        } else {
+            // Manejar el caso donde la cancha no está disponible
+            $resultResponse->setData("La cancha no está disponible en el horario seleccionado.");
             $resultResponse->setStatusCode(ResultResponse::ERROR_CODE);
             $resultResponse->setMessage(ResultResponse::TXT_ERROR_CODE);
         }
+    } catch(\Exception $e){
+        // Revertir la actualización del stock en caso de error
+        $this->actualizarStockBebidas(
+            $request->get('bebidaId'),
+            $request->get('cantidadBebidas'),
+            true
+        );
 
-        return response()->json($resultResponse);
+        Log::debug($e);
+        $resultResponse->setData($validator->messages());
+        $resultResponse->setStatusCode(ResultResponse::ERROR_CODE);
+        $resultResponse->setMessage(ResultResponse::TXT_ERROR_CODE);
     }
+
+    return response()->json($resultResponse);
+}
+
+
+/**
+     * Actualiza el estado de la cancha en función del nombre de la cancha, la hora de inicio y la hora de finalización.
+     */
+    private function actualizarEstado($canchaNombre, $horarioInicio, $horarioFin, $revertir = false)
+    {
+        // Obtener la cancha
+        $cancha = Cancha::where('canchaNombre', $canchaNombre)
+                        ->where('horarioInicio', $horarioInicio)
+                        ->where('horarioFin', $horarioFin)
+                        ->first();
+
+        // Verificar si la cancha existe antes de actualizar el estado
+        if ($cancha) {
+            // Establecer el estado según si se está creando o revirtiendo la reserva
+            $estado = $revertir ? 'Disponible' : 'Ocupado';
+
+            // Actualizar el estado de la cancha
+            $cancha->estado = $estado;
+            $cancha->save();
+        }
+    }
+
+
+/**
+ * Actualiza el stock de las bebidas en la tabla correspondiente.
+ */
+/**
+ * Actualiza el stock de las bebidas en la tabla correspondiente.
+ */
+private function actualizarStockBebidas($bebidaId, $cantidadBebidas, $revertir = false)
+{
+    // Obtener la bebida
+    $bebida = Bebida::find($bebidaId);
+
+    // Verificar si la bebida existe antes de actualizar el stock
+    if ($bebida) {
+        // Calcular el cambio en el stock según la reserva se esté creando o revirtiendo
+        $cambioStock = $revertir ? $cantidadBebidas : -$cantidadBebidas;
+        // Actualizar el stock sumando o restando el cambio calculado
+        $bebida->stockBebida = max(0, $bebida->stockBebida + $cambioStock);
+        $bebida->save();
+    }
+}
+
+
+
 
     /**
      * Display the specified resource.
@@ -70,14 +178,25 @@ class ReservaController extends Controller
         if (
             DB::table('reservas')
                 ->where('reservaId', 'like', '%' .$parameter. '%')
-                ->orWhere('descripcion', 'like', '%' . $parameter . '%')
+                ->orWhere('horarioInicio', 'like', '%' . $parameter . '%')
+                ->orWhere('horarioFin', 'like', '%' . $parameter . '%')
+                ->orWhere('canchaNombre', 'like', '%' . $parameter . '%')
+                ->orWhere('bebidaId', 'like', '%' . $parameter . '%')
+                ->orWhere('cantidadBebidas', 'like', '%' . $parameter . '%')
+                ->orWhere('precioTotal', 'like', '%' . $parameter . '%')
+
                 ->orwhere('email', 'like', '%' .$parameter. '%')
                 ->exists()
         ) {
             // Obtenemos el objeto con la consulta
             $reserva = DB::table('reservas')
                 ->where('reservaId', 'like', '%' .$parameter. '%')
-                ->orWhere('descripcion', 'like', '%' . $parameter . '%')
+                ->orWhere('horarioInicio', 'like', '%' . $parameter . '%')
+                ->orWhere('horarioFin', 'like', '%' . $parameter . '%')
+                ->orWhere('canchaNombre', 'like', '%' . $parameter . '%')
+                ->orWhere('bebidaId', 'like', '%' . $parameter . '%')
+                ->orWhere('cantidadBebidas', 'like', '%' . $parameter . '%')
+                ->orWhere('precioTotal', 'like', '%' . $parameter . '%')
                 ->orwhere('email', 'like', '%' .$parameter. '%')
                 ->get();
 
@@ -105,7 +224,13 @@ class ReservaController extends Controller
             $reserva=Reserva::findOrFail($reservaId);
             try {
 
-                $reserva->descripcion = $request->get('descripcion');
+                $reserva->horarioInicio = $request->get('horarioInicio');
+                $reserva->horarioFin = $request->get('horarioFin');
+                $reserva->canchaNombre = $request->get('canchaNombre');
+                $reserva->bebidaId = $request->get('bebidaId');
+                $reserva->cantidadBebidas = $request->get('cantidadBebidas');
+                $reserva->precioTotal = $request->get('precioTotal');
+
                 $reserva->email = $request->get('email');
 
                 $reserva->save();
@@ -139,7 +264,13 @@ class ReservaController extends Controller
             $reserva = Reserva::findOrFail($id);
 
             try{
-                $reserva->descripcion=$request->get('descripcion', $reserva->descripcion);
+                $reserva->horarioInicio=$request->get('horarioInicio', $reserva->horarioInicio);
+                $reserva->horarioFin=$request->get('horarioFin', $reserva->horarioFin);
+                $reserva->canchaNombre=$request->get('canchaNombre', $reserva->canchaNombre);
+                $reserva->bebidaId=$request->get('bebidaId', $reserva->bebidaId);
+                $reserva->cantidadBebidas=$request->get('cantidadBebidas', $reserva->cantidadBebidas);
+                $reserva->precioTotal=$request->get('precioTotal', $reserva->precioTotal);
+
                 $reserva->email=$request->get('email', $reserva->email);
 
                 $reserva->save();
@@ -171,15 +302,28 @@ class ReservaController extends Controller
      */
     public function destroy($reservaId)
     {
-        $resultResponse=new ResultResponse();
-        try{
-            $reserva=Reserva::findOrFail($reservaId);
+        $resultResponse = new ResultResponse();
+
+        try {
+            // Obtener la información de la reserva antes de eliminarla
+            $reserva = Reserva::findOrFail($reservaId);
+            $bebidaId = $reserva->bebidaId;
+            $cantidadBebidas = $reserva->cantidadBebidas;
+            $canchaNombre = $reserva->canchaNombre;
+            $horarioInicio = $reserva->horarioInicio;
+            $horarioFin = $reserva->horarioFin;
+
+            // Eliminar la reserva
             $reserva->delete();
+
+            // Actualizar el stock de bebidas y el estado de la cancha
+            $this->actualizarStockBebidas($bebidaId, $cantidadBebidas, true); // true para revertir la actualización
+            $this->actualizarEstado($canchaNombre, $horarioInicio, $horarioFin, true); // true para revertir la actualización
 
             $resultResponse->setData($reserva);
             $resultResponse->setStatusCode(ResultResponse::SUCCESS_CODE);
             $resultResponse->setMessage(ResultResponse::TXT_SUCCESS_CODE);
-        } catch(\Exception $e){
+        } catch(\Exception $e) {
             $resultResponse->setData("No existen coincidencias con la búsqueda");
             $resultResponse->setStatusCode(ResultResponse::ERROR_ELEMENT_NOT_FOUND_CODE);
             $resultResponse->setMessage(ResultResponse::TXT_ERROR_ELEMENT_NOT_FOUND_CODE);
@@ -187,6 +331,7 @@ class ReservaController extends Controller
 
         return response()->json($resultResponse);
     }
+
 
     private function validateReserva($request){
         $rules=[];
@@ -196,6 +341,33 @@ class ReservaController extends Controller
         $messages['reservaId.unique:reservas']=Lang::get('alerts.reserva_reservaId_unique:reservas');
         $messages['reservaId.numeric']=Lang::get('alerts.reserva_reservaId_numeric');
         $messages['reservaId.max:10']=Lang::get('alerts.reserva_reservaId_max:10');
+
+        $rules['canchaNombre'] = 'required|max:20';
+        $messages['canchaNombre.required'] = Lang::get('alerts.reserva_canchaNombre_required');
+        $messages['canchaNombre.max'] = Lang::get('alerts.reserva_canchaNombre_max:20');
+        $messages['canchaNombre.exists:canchas']=Lang::get('alerts.reserva_canchaNombre_exists:canchas');
+
+
+        $rules['horarioInicio'] = 'required|date_format:Y-m-d H:i:s';
+        $messages['horarioInicio.required'] = Lang::get('alerts.reserva_horarioInicio_required');
+        $messages['horarioInicio.date_format'] = Lang::get('alerts.reserva_horarioInicio_date_format:Y-m-d H:i:s');
+
+
+        $rules['horarioFin'] = 'required|date_format:Y-m-d H:i:s';
+        $messages['horarioFin.required'] = Lang::get('alerts.reserva_horarioFin_required');
+        $messages['horarioFin.date_format'] = Lang::get('alerts.reserva_horarioFin_date_format:Y-m-d H:i:s');
+
+
+        $rules['bebidaId']='required|max:10';
+        $messages['bebidaId.required']=Lang::get('alerts.reserva_bebidaId_required');
+        $messages['bebidaId.max:10']=Lang::get('alerts.reserva_bebidaId_max:10');
+        $messages['bebidaId.exists:bebidas']=Lang::get('alerts.reserva_bebidaId_exists:bebidas');
+
+
+        $rules['cantidadBebidas']='required|integer';
+        $messages['cantidadBebidas.required']=Lang::get('alerts.reserva_cantidadBebidas_required');
+        $messages['cantidadBebidas.integer']=Lang::get('alerts.reserva_cantidadBebidas_integer');
+
 
         $rules['email']='required|exists:users';
         $messages['email.required']=Lang::get('alerts.reserva_email_required');

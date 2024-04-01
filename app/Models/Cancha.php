@@ -10,9 +10,10 @@ class Cancha extends Model
     use HasFactory;
     protected $fillable=[
         'canchaNombre',
-        'horario',
+        'horarioInicio',
+        'horarioFin',
         'precioCancha',
-        'reservaId',
+        'estado',
     ];
     public $incrementing=true;
 }

@@ -14,15 +14,14 @@ return new class extends Migration
         Schema::create('canchas', function (Blueprint $table) {
             $table->id();
             $table->string('canchaNombre',20);
-            $table->dateTime('horario');
+            $table->dateTime('horarioInicio');
+            $table->dateTime('horarioFin');
             $table->decimal('precioCancha', 6, 2);
-
-            $table->bigInteger('reservaId')->unsigned()->nullable();
-            $table->foreign('reservaId')->references('reservaId')->on('reservas')->onDelete('cascade')->onUpdate('cascade');
+            $table->string('estado',20);
             $table->timestamps();
             $table->softDeletes();
 
-            $table->unique(['canchaNombre', 'horario']);
+            $table->unique(['canchaNombre', 'horarioInicio', 'horarioFin']);
 
         });
     }

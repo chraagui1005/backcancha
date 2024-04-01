@@ -10,7 +10,12 @@ class Reserva extends Model
     use HasFactory;
 
     protected $fillable=[
-        'descripcion',
+        'horarioInicio',
+        'horarioFin',
+        'canchaNombre',
+        'bebidaId',
+        'cantidadBebidas',
+        'precioTotal',
         'email',
     ];
 
