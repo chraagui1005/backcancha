@@ -44,6 +44,8 @@ class BebidaController extends Controller
                 'bebidaId' => $request->get('bebidaId'),
                 'precioBebida' => $request->get('precioBebida'),
                 'stockBebida' => $request->get('stockBebida'),
+                'imagenBebida' => $request->get('imagenBebida'),
+
             ]);
 
             $newBebida->save();
@@ -109,6 +111,8 @@ class BebidaController extends Controller
                 $bebida->bebidaId = $request->get('bebidaId');
                 $bebida->precioBebida = $request->get('precioBebida');
                 $bebida->stockBebida = $request->get('stockBebida');
+                $bebida->iamgenBebida = $request->get('iamgenBebida');
+
 
                 $bebida->save();
 
@@ -144,6 +148,7 @@ class BebidaController extends Controller
                 $bebida->bebidaId=$request->get('bebidaId', $bebida->bebidaId);
                 $bebida->precioBebida=$request->get('precioBebida', $bebida->precioBebida);
                 $bebida->stockBebida=$request->get('stockBebida', $bebida->stockBebida);
+                $bebida->imagenBebida=$request->get('imagenBebida', $bebida->imagenBebida);
 
                 $bebida->save();
 

@@ -16,6 +16,7 @@ return new class extends Migration
             $table->primary('bebidaId');
             $table->decimal('precioBebida', 4, 2);
             $table->integer('stockBebida')->lenght(6);
+            $table->string('imagenBebida');
 
             $table->timestamps();
             $table->softDeletes();

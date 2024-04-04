@@ -16,10 +16,10 @@ return new class extends Migration
             $table->dateTime('horarioInicio');
             $table->dateTime('horarioFin');
             $table->string('canchaNombre');
-            $table->string('bebidaId');
+            $table->string('bebidaId')->nullable();
             $table->foreign('bebidaId')->references('bebidaId')->on('bebidas')->onDelete('restrict')->onUpdate('cascade');
 
-            $table->integer('cantidadBebidas');
+            $table->integer('cantidadBebidas')->nullable();
             $table->decimal('precioTotal', 4, 2);
 
             $table->string('email');

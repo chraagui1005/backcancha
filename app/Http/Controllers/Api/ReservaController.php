@@ -61,7 +61,8 @@ class ReservaController extends Controller
             $bebida = Bebida::find($bebidaId);
 
             // Verificar si la bebida existe y si la cantidad solicitada no excede el stock
-            if ($bebida && $cantidadBebidas <= $bebida->stockBebida) {
+            if (($bebida && $cantidadBebidas <= $bebida->stockBebida) || ($cantidadBebidas === null && $bebida === null)) {
+
                 // Actualizar el stock de las bebidas
                 $this->actualizarStockBebidas(
                     $bebidaId,
@@ -402,14 +403,12 @@ public function put(Request $request, $id)
         $messages['horarioFin.date_format'] = Lang::get('alerts.reserva_horarioFin_date_format:Y-m-d H:i:s');
 
 
-        $rules['bebidaId']='required|max:10|exists:bebidas,bebidaId';
-        $messages['bebidaId.required']=Lang::get('alerts.reserva_bebidaId_required');
+        $rules['bebidaId']='max:10|exists:bebidas,bebidaId';
         $messages['bebidaId.max:10']=Lang::get('alerts.reserva_bebidaId_max:10');
         $messages['bebidaId.exists:bebidas'] = Lang::get('alerts.reserva_bebidaId_exists:bebidas');
 
 
-        $rules['cantidadBebidas']='required|integer';
-        $messages['cantidadBebidas.required']=Lang::get('alerts.reserva_cantidadBebidas_required');
+        $rules['cantidadBebidas']='integer';
         $messages['cantidadBebidas.integer']=Lang::get('alerts.reserva_cantidadBebidas_integer');
 
 
